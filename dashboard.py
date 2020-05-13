@@ -39,9 +39,14 @@ def fig_from_df_cols_grouped(df, x_group, y_cols):
 
     for i, col_name in enumerate(y_cols, 1):
         data_mean = df.groupby(x_group)[col_name].aggregate(np.mean)
+        data_var = df.groupby(x_group)[col_name].aggregate(np.std)
         fig.add_trace(
             go.Scatter(x=data_mean.index.tolist(),
                        y=data_mean.values,
+                       error_y=dict(type='data',
+                                    array=data_var.values,
+                                    visible=True,
+                                    ),
                        name=col_name,
                        mode='lines+markers',
                        ),
