@@ -43,6 +43,8 @@ df_speedtest['Timestamp'] = df_speedtest['Timestamp'] + timedelta_from_utc()
 fig = fig_from_df_cols(df_speedtest, 'Timestamp', ['Download', 'Upload', 'Ping'])
 fig.update_layout(title_text='Timeseries of Speedtests',
                   template='plotly_dark',
+                  height=600,
+                  width=800,
                   )
 
 
