@@ -1,3 +1,4 @@
+from datetime import datetime
 import os
 
 import pandas as pd
@@ -27,7 +28,16 @@ def fig_from_df_cols(df, x_col, y_cols):
     return fig
 
 
+def timedelta_from_utc():
+    dt_now = datetime.now()
+    dt_utc = datetime.utcnow()
+    return dt_now - dt_utc
+
+
 df_speedtest = pd.read_csv(os.path.join('example', 'speedtests.csv'))
+
+df_speedtest['Timestamp'] = pd.to_datetime(df_speedtest['Timestamp'])
+df_speedtest['Timestamp'] = df_speedtest['Timestamp'] + timedelta_from_utc()
 
 fig = fig_from_df_cols(df_speedtest, 'Timestamp', ['Download', 'Upload', 'Ping'])
 fig.update_layout(title_text='Timeseries of Speedtests',
