@@ -1,6 +1,7 @@
 from datetime import datetime
 import os
 
+import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -22,6 +23,25 @@ def fig_from_df_cols(df, x_col, y_cols):
         fig.add_trace(
             go.Scatter(x=df[x_col],
                        y=df[col_name],
+                       name=col_name,
+                       mode='lines+markers',
+                       ),
+            row=i, col=1)
+    return fig
+
+
+def fig_from_df_cols_grouped(df, x_group, y_cols):
+    fig = make_subplots(rows=len(y_cols),
+                        cols=1,
+                        shared_xaxes=True,
+                        vertical_spacing=0.05,
+                        )
+
+    for i, col_name in enumerate(y_cols, 1):
+        data_mean = df.groupby(x_group)[col_name].aggregate(np.mean)
+        fig.add_trace(
+            go.Scatter(x=data_mean.index.tolist(),
+                       y=data_mean.values,
                        name=col_name,
                        mode='lines+markers',
                        ),
@@ -51,16 +71,24 @@ if __name__ == "__main__":
     df_speedtest['Year'] = [ts.year for ts in df_speedtest['Timestamp']]
 
     # prepare plots
-    fig = fig_from_df_cols(df_speedtest, 'Timestamp', ['Download', 'Upload', 'Ping'])
-    fig.update_layout(title_text='Timeseries of Speedtests',
-                      template='plotly_dark',
-                      height=600,
-                      width=800,
-                      )
+    default_layout = {'template': 'plotly_dark',
+                      'height': 600,
+                      'width': 800,
+                      }
 
+    fig_timeseries = fig_from_df_cols(df_speedtest, 'Timestamp', ['Download', 'Upload', 'Ping'])
+    fig_timeseries.update_layout(title_text='Timeseries of Speedtests',
+                                 **default_layout
+                                 )
+
+    fig_mean = fig_from_df_cols_grouped(df_speedtest, 'Hour', ['Download', 'Upload', 'Ping'])
+    fig_mean.update_layout(title_text='Hourly Average',
+                           **default_layout
+                           )
     # create dashboard
     app = dash.Dash()
     app.layout = html.Div([
-        dcc.Graph(figure=fig)
+        dcc.Graph(figure=fig_timeseries),
+        dcc.Graph(figure=fig_mean),
     ])
     app.run_server(host='0.0.0.0')
