@@ -34,12 +34,21 @@ def timedelta_from_utc():
     dt_utc = datetime.utcnow()
     return dt_now - dt_utc
 
-
+# import data
 df_speedtest = pd.read_csv(os.path.join('example', 'speedtests.csv'))
 
+# convert timestamp
 df_speedtest['Timestamp'] = pd.to_datetime(df_speedtest['Timestamp'])
 df_speedtest['Timestamp'] = df_speedtest['Timestamp'] + timedelta_from_utc()
 
+# add groupable timestamp variations
+df_speedtest['Hour'] = [ts.hour for ts in df_speedtest['Timestamp']]
+df_speedtest['Weekday'] = [ts.weekday() for ts in df_speedtest['Timestamp']]
+df_speedtest['Week'] = [ts.week for ts in df_speedtest['Timestamp']]
+df_speedtest['Month'] = [ts.month for ts in df_speedtest['Timestamp']]
+df_speedtest['Year'] = [ts.year for ts in df_speedtest['Timestamp']]
+
+# prepare plots
 fig = fig_from_df_cols(df_speedtest, 'Timestamp', ['Download', 'Upload', 'Ping'])
 fig.update_layout(title_text='Timeseries of Speedtests',
                   template='plotly_dark',
@@ -47,7 +56,7 @@ fig.update_layout(title_text='Timeseries of Speedtests',
                   width=800,
                   )
 
-
+# create dashboard
 app = dash.Dash()
 app.layout = html.Div([
     dcc.Graph(figure=fig)
