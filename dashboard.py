@@ -14,7 +14,8 @@ import dash_html_components as html
 def fig_from_df_cols(df, x_col, y_cols):
     fig = make_subplots(rows=len(y_cols),
                         cols=1,
-                        shared_xaxes=True
+                        shared_xaxes=True,
+                        vertical_spacing=0.05,
                         )
 
     for i, col_name in enumerate(y_cols, 1):
