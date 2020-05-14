@@ -1,3 +1,4 @@
+import argparse
 from datetime import datetime
 import os
 
@@ -61,8 +62,15 @@ def timedelta_from_utc():
 
 
 if __name__ == "__main__":
-    # import data
-    df_speedtest = pd.read_csv(os.path.join('example', 'speedtests.csv'))
+    # import data with parser
+    parser = argparse.ArgumentParser(description='Visualize speed test results with plotly and dash')
+    parser.add_argument('input_path', help='Path to CSV from speedtest-cli')
+    args = parser.parse_args()
+
+    if os.path.exists(args.input_path):
+        df_speedtest = pd.read_csv(args.input_path)
+    else:
+        raise ValueError(f'{args.input_path} does not exist')
 
     # convert timestamp
     df_speedtest['Timestamp'] = pd.to_datetime(df_speedtest['Timestamp'])
