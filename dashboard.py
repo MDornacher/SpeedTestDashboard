@@ -6,10 +6,14 @@ import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-
 import dash
 import dash_core_components as dcc
 import dash_html_components as html
+
+import sqlite3
+import csv
+from tkinter import *
+from tkinter.filedialog import askopenfilename
 
 
 def fig_from_df_cols(df, x_col, y_cols):
@@ -60,9 +64,74 @@ def timedelta_from_utc():
     return dt_now - dt_utc
 
 
+def con_db(db):
+    return sqlite3.connect(db)
+
+
+def crt_table(con, table):
+    con.execute(f'''create table if not exists {table}
+                    (server_id char,
+                     sponsor char,
+                     server_name char,
+                     timestamp char primary key,
+                     distance char,
+                     ping dec,
+                     download dec,
+                     upload dec,
+                     share char,
+                     ip_address char
+                     );''')
+    con.execute(f'''create temp table §{table} as 
+                    select * from {table};''')
+
+
+def fill_table(con, table, csv_file):
+    cur = con.cursor()
+    with open(csv_file) as fin:
+        dr = csv.DictReader(fin)
+        for line in dr:
+            to_db = (line['Server ID'],
+                     line['Sponsor'],
+                     line['Server Name'],
+                     line['Timestamp'],
+                     line['Distance'],
+                     line['Ping'],
+                     line['Download'],
+                     line['Upload'],
+                     line['Share'],
+                     line['IP Address'])
+            cur.execute(f'''insert into §{table}
+                            values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            ;''', to_db)
+            con.commit()
+    cur.execute(f'''insert into {table}
+                    select *
+                    from §{table} a
+                    where not exists(select 1
+                                     from {table} b 
+                                     where b.timestamp = a.timestamp);
+                    ''')
+    con.commit()
+    con.close()
+
+
 if __name__ == "__main__":
+    # choose file
+    root = Tk()
+    root.withdraw()
+    root.update()
+    file = askopenfilename()
+    root.destroy()
+    while not file.endswith('.csv'):
+        print('please pick a CSV file')
+        file = askopenfilename()
+
     # import data
-    df_speedtest = pd.read_csv(os.path.join('example', 'speedtests.csv'))
+    df_speedtest = pd.read_csv(file)
+
+    db_con = con_db(os.path.join('example', 'mydb.db'))
+    crt_table(db_con, 'speedtest')
+    fill_table(db_con, 'speedtest', file)
 
     # convert timestamp
     df_speedtest['Timestamp'] = pd.to_datetime(df_speedtest['Timestamp'])
