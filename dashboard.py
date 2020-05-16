@@ -11,7 +11,6 @@ import dash_core_components as dcc
 import dash_html_components as html
 
 import sqlite3
-import csv
 from tkinter import *
 from tkinter.filedialog import askopenfilename
 
@@ -68,6 +67,10 @@ def con_db(db):
     return sqlite3.connect(db)
 
 
+def drop_table(con, table):
+    con.execute(f'drop table {table};')
+
+
 def crt_table(con, table):
     con.execute(f'''create table if not exists {table}
                     (server_id char,
@@ -85,25 +88,23 @@ def crt_table(con, table):
                     select * from {table};''')
 
 
-def fill_table(con, table, csv_file):
+def fill_table(con, table, q_df):
     cur = con.cursor()
-    with open(csv_file) as fin:
-        dr = csv.DictReader(fin)
-        for line in dr:
-            to_db = (line['Server ID'],
-                     line['Sponsor'],
-                     line['Server Name'],
-                     line['Timestamp'],
-                     line['Distance'],
-                     line['Ping'],
-                     line['Download'],
-                     line['Upload'],
-                     line['Share'],
-                     line['IP Address'])
-            cur.execute(f'''insert into §{table}
-                            values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                            ;''', to_db)
-            con.commit()
+    for index, row in q_df.iterrows():
+        to_db = (row['Server ID'],
+                 row['Sponsor'],
+                 row['Server Name'],
+                 row['Timestamp'],
+                 row['Distance'],
+                 row['Ping'],
+                 row['Download'],
+                 row['Upload'],
+                 row['Share'],
+                 row['IP Address'])
+        cur.execute(f'''insert into §{table}
+                        values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ;''', to_db)
+        con.commit()
     cur.execute(f'''insert into {table}
                     select *
                     from §{table} a
@@ -129,10 +130,6 @@ if __name__ == "__main__":
     # import data
     df_speedtest = pd.read_csv(file)
 
-    db_con = con_db(os.path.join('example', 'mydb.db'))
-    crt_table(db_con, 'speedtest')
-    fill_table(db_con, 'speedtest', file)
-
     # convert timestamp
     df_speedtest['Timestamp'] = pd.to_datetime(df_speedtest['Timestamp'])
     df_speedtest['Timestamp'] = df_speedtest['Timestamp'] + timedelta_from_utc()
@@ -143,6 +140,11 @@ if __name__ == "__main__":
     df_speedtest['Week'] = [ts.week for ts in df_speedtest['Timestamp']]
     df_speedtest['Month'] = [ts.month for ts in df_speedtest['Timestamp']]
     df_speedtest['Year'] = [ts.year for ts in df_speedtest['Timestamp']]
+
+    # import into Databas
+    db_con = con_db(os.path.join('example', 'mydb.db'))
+    crt_table(db_con, 'speedtest')
+    fill_table(db_con, 'speedtest', df_speedtest)
 
     # prepare plots
     default_layout = {'template': 'plotly_dark',
