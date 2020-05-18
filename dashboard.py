@@ -1,4 +1,5 @@
 import os
+import argparse
 
 import numpy as np
 import pandas as pd
@@ -121,15 +122,23 @@ def split_file(f):
 
 
 if __name__ == "__main__":
-    # choose file
-    root = Tk()
-    root.withdraw()
-    root.update()
-    file = askopenfilename()
-    root.destroy()
-    while not file.endswith('.csv'):
-        print('please pick a CSV file')
+    # import data with parser
+    parser = argparse.ArgumentParser(description='Visualize speed test results with plotly and dash')
+    parser.add_argument('input_path', help='Path to CSV from speedtest-cli')
+    args = parser.parse_args()
+
+    if os.path.exists(args.input_path):
+        file = args.input_path
+    else:
+        # choose file
+        root = Tk()
+        root.withdraw()
+        root.update()
         file = askopenfilename()
+        root.destroy()
+        if not os.path.exists(args.input_path):
+            raise ValueError(f'{args.input_path} does not exist')
+
     file_path, file_name, file_ext = split_file(file)
 
     # import data
