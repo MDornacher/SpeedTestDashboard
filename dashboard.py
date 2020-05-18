@@ -1,4 +1,3 @@
-from datetime import datetime
 import os
 
 import numpy as np
@@ -57,10 +56,8 @@ def fig_from_df_cols_grouped(df, x_group, y_cols):
     return fig
 
 
-def timedelta_from_utc():
-    dt_now = datetime.now()
-    dt_utc = datetime.utcnow()
-    return dt_now - dt_utc
+def cvt_ts_from_utc(utc_ts):
+    return utc_ts.dt.tz_convert('Europe/Vienna')
 
 
 def con_db(db):
@@ -73,11 +70,11 @@ def drop_table(con, table):
 
 def crt_table(con, table):
     con.execute(f'''create table if not exists {table}
-                    (server_id char,
+                    (server_id int,
                      sponsor char,
                      server_name char,
                      timestamp char primary key,
-                     distance char,
+                     distance dec,
                      ping dec,
                      download dec,
                      upload dec,
@@ -91,10 +88,11 @@ def crt_table(con, table):
 def fill_table(con, table, q_df):
     cur = con.cursor()
     for index, row in q_df.iterrows():
+        ts = str(row['Timestamp'])
         to_db = (row['Server ID'],
                  row['Sponsor'],
                  row['Server Name'],
-                 row['Timestamp'],
+                 ts,
                  row['Distance'],
                  row['Ping'],
                  row['Download'],
@@ -116,6 +114,12 @@ def fill_table(con, table, q_df):
     con.close()
 
 
+def split_file(f):
+    x_path, x_name = os.path.split(f)
+    x_name, x_ext = os.path.splitext(x_name)
+    return x_path, x_name, x_ext
+
+
 if __name__ == "__main__":
     # choose file
     root = Tk()
@@ -126,13 +130,14 @@ if __name__ == "__main__":
     while not file.endswith('.csv'):
         print('please pick a CSV file')
         file = askopenfilename()
+    file_path, file_name, file_ext = split_file(file)
 
     # import data
     df_speedtest = pd.read_csv(file)
 
     # convert timestamp
     df_speedtest['Timestamp'] = pd.to_datetime(df_speedtest['Timestamp'])
-    df_speedtest['Timestamp'] = df_speedtest['Timestamp'] + timedelta_from_utc()
+    df_speedtest['Timestamp'] = cvt_ts_from_utc(df_speedtest['Timestamp'])
 
     # add groupable timestamp variations
     df_speedtest['Hour'] = [ts.hour for ts in df_speedtest['Timestamp']]
@@ -143,8 +148,8 @@ if __name__ == "__main__":
 
     # import into Databas
     db_con = con_db(os.path.join('example', 'mydb.db'))
-    crt_table(db_con, 'speedtest')
-    fill_table(db_con, 'speedtest', df_speedtest)
+    crt_table(db_con, file_name)
+    fill_table(db_con, file_name, df_speedtest)
 
     # prepare plots
     default_layout = {'template': 'plotly_dark',
