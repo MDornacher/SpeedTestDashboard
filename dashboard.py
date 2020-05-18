@@ -136,8 +136,8 @@ if __name__ == "__main__":
         root.update()
         file = askopenfilename()
         root.destroy()
-        if not os.path.exists(args.input_path):
-            raise ValueError(f'{args.input_path} does not exist')
+        if not os.path.exists(file):
+            raise ValueError(f'{file} does not exist')
 
     file_path, file_name, file_ext = split_file(file)
 
