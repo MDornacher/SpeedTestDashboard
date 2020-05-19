@@ -55,6 +55,24 @@ def fig_from_df_cols_grouped(df, x_group, y_cols):
     return fig
 
 
+def fig_from_df_cols_boxed(df, x_group, y_cols):
+    fig = make_subplots(rows=len(y_cols),
+                        cols=1,
+                        shared_xaxes=True,
+                        vertical_spacing=0.05,
+                        )
+
+    for i, col_name in enumerate(y_cols, 1):
+        fig.add_trace(go.Box(
+            x=df[x_group],
+            y=df[col_name],
+            name=col_name,
+            boxpoints=False,
+            ),
+            row=i, col=1)
+    return fig
+
+
 def timedelta_from_utc():
     dt_now = datetime.now()
     dt_utc = datetime.utcnow()
@@ -95,13 +113,20 @@ if __name__ == "__main__":
                                  )
 
     fig_mean = fig_from_df_cols_grouped(df_speedtest, 'Hour', ['Download', 'Upload', 'Ping'])
-    fig_mean.update_layout(title_text='Hourly Average',
+    fig_mean.update_layout(title_text='Hourly Average - Mean and Standard Deviation',
                            **default_layout
                            )
+
+    fig_box = fig_from_df_cols_boxed(df_speedtest, 'Hour', ['Download', 'Upload', 'Ping'])
+    fig_box.update_layout(title_text='Hourly Average - Box and Whisker',
+                          **default_layout
+                          )
+
     # create dashboard
     app = dash.Dash()
     app.layout = html.Div([
         dcc.Graph(figure=fig_timeseries),
         dcc.Graph(figure=fig_mean),
+        dcc.Graph(figure=fig_box),
     ])
     app.run_server(host='0.0.0.0')
