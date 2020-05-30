@@ -54,6 +54,20 @@ def fig_from_df_cols_grouped(df, x_group, y_cols):
     return fig
 
 
+def get_df():
+    df_q = pd.read_sql('''select *
+                          from speedtest;''', db_con)
+    # convert timestamp
+    df_q['timestamp'] = pd.to_datetime(df_q['timestamp'])
+
+    # add groupable timestamp variations
+    df_q['hour'] = [ts.hour for ts in df_q['timestamp']]
+    df_q['weekday'] = [ts.weekday() for ts in df_q['timestamp']]
+    df_q['week'] = [ts.week for ts in df_q['timestamp']]
+    df_q['month'] = [ts.month for ts in df_q['timestamp']]
+    df_q['year'] = [ts.year for ts in df_q['timestamp']]
+    return df_q
+
 def con_db(db):
     return sqlite3.connect(db)
 
@@ -62,17 +76,7 @@ if __name__ == "__main__":
     db_con = con_db(os.path.join('example', 'mydb.db'))
 
     # import data
-    df_speedtest = pd.read_sql('''select *
-                                  from speedtest;''', db_con)
-    # convert timestamp
-    df_speedtest['timestamp'] = pd.to_datetime(df_speedtest['timestamp'])
-
-    # add groupable timestamp variations
-    df_speedtest['hour'] = [ts.hour for ts in df_speedtest['timestamp']]
-    df_speedtest['weekday'] = [ts.weekday() for ts in df_speedtest['timestamp']]
-    df_speedtest['week'] = [ts.week for ts in df_speedtest['timestamp']]
-    df_speedtest['month'] = [ts.month for ts in df_speedtest['timestamp']]
-    df_speedtest['year'] = [ts.year for ts in df_speedtest['timestamp']]
+    df_speedtest = get_df()
 
     # prepare plots
     default_layout = {'template': 'plotly_dark',
