@@ -68,6 +68,7 @@ def get_df():
     df_q['year'] = [ts.year for ts in df_q['timestamp']]
     return df_q
 
+
 def con_db(db):
     return sqlite3.connect(db)
 
