@@ -5,6 +5,7 @@ import pandas as pd
 import mysql.connector
 import re
 import math
+import argparse
 
 
 def mysql_con():
@@ -91,7 +92,15 @@ def fill_table(con, cur, table, q_df):
 
 
 if __name__ == "__main__":
-    file = os.path.join('example', 'speedtest.csv')
+    # import data with parser
+    parser = argparse.ArgumentParser(description='Import speedtest.csv into MySQL Database')
+    parser.add_argument('input_path', help='Path to CSV from speedtest-cli')
+    args = parser.parse_args()
+
+    if os.path.exists(args.input_path):
+        file = args.input_path
+    else:
+        raise ValueError(f'{args.input_path} does not exist')
 
     # import data
     df_speedtest = pd.read_csv(file)
@@ -99,6 +108,7 @@ if __name__ == "__main__":
     # convert timestamp
     df_speedtest['Timestamp'] = pd.to_datetime(df_speedtest['Timestamp'])
     df_speedtest['Timestamp'] = df_speedtest['Timestamp'].dt.tz_localize('Europe/Vienna')
+    df_speedtest['Timestamp'] = df_speedtest['Timestamp'].dt.tz_convert(None)
 
     # import into Database
     db_con = mysql_con()
