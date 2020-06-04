@@ -1,58 +1,85 @@
+#!/bin/env python3
+
 import os
-import argparse
-from tkinter import *
-from tkinter.filedialog import askopenfilename
-
 import pandas as pd
-import sqlite3
+import mysql.connector
+import re
+import math
 
 
-def con_db(db):
-    return sqlite3.connect(db)
+def mysql_con():
+    mydb = mysql.connector.connect(host='192.168.0.2',
+                                   user='adornacher',
+                                   passwd='YellowAndDangerous=Bananen',
+                                   auth_plugin='caching_sha2_password')
+
+    cur = mydb.cursor()
+
+    cur.execute("show databases;")
+    exists = False
+    for x in cur:
+        if 'mydb' in x:
+            exists = True
+    if not exists:
+        cur.execute("create database mydb")
+    cur.close()
+    mydb.close()
+
+    return mysql.connector.connect(host='192.168.0.2',
+                                   user='adornacher',
+                                   passwd='YellowAndDangerous=Bananen',
+                                   database='mydb',
+                                   auth_plugin='caching_sha2_password')
 
 
-def drop_table(con, table):
-    con.execute(f'drop table {table};')
+def drop_table(cur, table):
+    cur.execute(f'drop table {table};')
 
 
-def crt_table(con, table):
-    con.execute(f'''create table if not exists {table}
-                    (timestamp char primary key,
-                     server_name char,
-                     server_id char,
-                     latency int,
-                     jitter int,
-                     packet_loss int,
-                     download int,
-                     upload int,
-                     downloaded_bytes int,
-                     uploaded_bytes int,
-                     share_url char
-                     );''')
-    con.execute(f'''create temp table §{table} as 
-                    select * from {table};''')
+def crt_table(cur, table):
+    cur.execute('show tables;')
+    exists = False
+    for x in cur:
+        if table in x:
+            exists = True
+    if not exists:
+        cur.execute(f'''create table {table}
+                        (timestamp timestamp primary key,
+                         server_name char(50),
+                         server_id decimal(10,0),
+                         latency decimal(20,10),
+                         jitter decimal(20,10),
+                         packet_loss decimal(20,10),
+                         download decimal(20,0),
+                         upload decimal(20,0),
+                         downloaded_bytes decimal(20,0),
+                         uploaded_bytes decimal(20,0),
+                         share_url char(200)
+                         );''')
+    cur.execute(f'create temporary table if not exists §{table} (select * from {table});')
 
 
-def fill_table(con, table, q_df):
-    cur = con.cursor()
+def fill_table(con, cur, table, q_df):
     for index, row in q_df.iterrows():
-        ts = str(row['Timestamp'])
-        to_db = (ts,
-                 row['server id'],
-                 row['server name'],
-                 row['latency'],
-                 row['jitter'],
-                 row['packet loss'],
-                 row['download'],
-                 row['upload'],
-                 row['downloaded bytes'],
-                 row['uploaded bytes'],
-                 row['share url']
-                 )
-        cur.execute(f'''insert into §{table}
-                        values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        ;''', to_db)
-        con.commit()
+        ts = str(row['Timestamp'])[:19]
+        name = re.search('\"(.+?)\"', row['server name']).group(1)
+        if math.isnan(row['packet loss']):
+            pack_loss = 0
+        else:
+            pack_loss = row['packet loss']
+        sql = f'''insert into §{table}
+                  values("{ts}",
+                         "{name}",
+                         {row['server id']},
+                         {row['latency']},
+                         {row['jitter']},
+                         {pack_loss},
+                         {row['download']},
+                         {row['upload']},
+                         {row['downloaded bytes']},
+                         {row['uploaded bytes']},
+                         "{row['share url']}");'''
+        cur.execute(sql)
     cur.execute(f'''insert into {table}
                     select *
                     from §{table} a
@@ -61,35 +88,10 @@ def fill_table(con, table, q_df):
                                      where b.timestamp = a.timestamp);
                     ''')
     con.commit()
-    con.close()
-
-
-def split_file(f):
-    x_path, x_name = os.path.split(f)
-    x_name, x_ext = os.path.splitext(x_name)
-    return x_path, x_name, x_ext
 
 
 if __name__ == "__main__":
-    # import data with parser
-    parser = argparse.ArgumentParser(description='Visualize speed test results with plotly and dash')
-    parser.add_argument('input_path', help='Path to CSV from speedtest')
-    parser.add_argument('-d', '--drop', action='store_true', help='Drop Table if exists')
-    args = parser.parse_args()
-
-    # choose file
-    if os.path.exists(args.input_path):
-        file = args.input_path
-    else:
-        root = Tk()
-        root.withdraw()
-        root.update()
-        file = askopenfilename()
-        root.destroy()
-        if not os.path.exists(file):
-            raise ValueError(f'{file} does not exist')
-
-    file_path, file_name, file_ext = split_file(file)
+    file = os.path.join('example', 'speedtest.csv')
 
     # import data
     df_speedtest = pd.read_csv(file)
@@ -98,8 +100,10 @@ if __name__ == "__main__":
     df_speedtest['Timestamp'] = pd.to_datetime(df_speedtest['Timestamp'])
     df_speedtest['Timestamp'] = df_speedtest['Timestamp'].dt.tz_localize('Europe/Vienna')
 
-
     # import into Database
-    db_con = con_db(os.path.join('example', 'mydb.db'))
-    crt_table(db_con, 'speedtest')
-    fill_table(db_con, 'speedtest', df_speedtest)
+    db_con = mysql_con()
+    db_cur = db_con.cursor()
+    crt_table(db_cur, 'speedtest')
+    fill_table(db_con, db_cur, 'speedtest', df_speedtest)
+    db_cur.close()
+    db_con.close()
