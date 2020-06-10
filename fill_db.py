@@ -46,7 +46,7 @@ def crt_table(cur, table):
     if not exists:
         cur.execute(f'''create table {table}
                         (timestamp timestamp primary key,
-                         server_name char(50),
+                         server_name char(200),
                          server_id decimal(10,0),
                          latency decimal(20,10),
                          jitter decimal(20,10),
